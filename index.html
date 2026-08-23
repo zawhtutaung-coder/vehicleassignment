@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Braking Performance Simulator | Zaw Htut Aung</title>
+<style>
+:root{
+  --bg:#07101f; --panel:#101a2d; --panel2:#15233b; --line:#2b3b5e;
+  --text:#eef5ff; --muted:#9fb1cf; --cyan:#54d8ff; --red:#ff6477;
+  --green:#38d488; --yellow:#ffd166; --purple:#a98bff;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--text);
+background:radial-gradient(circle at 10% 0%,rgba(84,216,255,.12),transparent 28%),radial-gradient(circle at 90% 5%,rgba(169,139,255,.10),transparent 25%),var(--bg)}
+.wrap{max-width:1320px;margin:auto;padding:20px}
+header{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:18px}
+h1{margin:0;font-size:clamp(28px,4vw,44px);letter-spacing:-.035em}
+header p{margin:6px 0 0;color:var(--muted)}
+.badge{padding:10px 14px;border-radius:999px;border:1px solid var(--line);background:#ffffff08;font-weight:800;font-size:13px}
+.layout{display:grid;grid-template-columns:350px 1fr;gap:18px}
+@media(max-width:930px){.layout{grid-template-columns:1fr}}
+.card{background:linear-gradient(180deg,#ffffff05,#ffffff01),var(--panel);border:1px solid var(--line);border-radius:20px;padding:18px}
+label{display:block;font-size:13px;color:#c8d5ed;margin:9px 0 6px}
+input,select{width:100%;padding:11px 12px;border-radius:12px;border:1px solid var(--line);background:#091426;color:var(--text);font-size:16px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+button{width:100%;padding:13px 15px;border-radius:13px;font-weight:900;font-size:15px;cursor:pointer}
+.run{margin-top:16px;border:0;color:#07111f;background:linear-gradient(90deg,var(--cyan),#a8efff)}
+.reset{margin-top:8px;border:1px solid var(--line);background:#ffffff08;color:var(--text)}
+.note{margin-top:10px;color:var(--muted);font-size:12px;line-height:1.5}
+
+.sim{position:relative;min-height:390px;overflow:hidden;border-radius:18px;border:1px solid var(--line);background:linear-gradient(#101a31 0 64%,#374052 64% 67%,#111827 67% 100%)}
+.road-mark{position:absolute;bottom:11%;left:0;width:240%;height:4px;opacity:.45;background:repeating-linear-gradient(90deg,#fff 0 42px,transparent 42px 84px)}
+.running .road-mark{animation:road .55s linear infinite}
+@keyframes road{to{transform:translateX(-84px)}}
+.car{position:absolute;left:8%;bottom:16%;width:265px;max-width:55%;transform-origin:55% 72%}
+.car svg{width:100%;display:block;filter:drop-shadow(0 12px 8px #0009)}
+.wheel{transform-box:fill-box;transform-origin:center}
+.running .wheel{animation:spin .32s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.braking .car{animation:nosedive .5s ease-in-out infinite alternate}
+@keyframes nosedive{from{transform:rotate(.4deg)}to{transform:rotate(1.6deg) translateY(3px)}}
+.hud{position:absolute;top:14px;right:14px;background:#06101dcc;border:1px solid #355078;border-radius:14px;padding:10px 13px;text-align:right}
+.hud .speed{font-size:30px;font-weight:950}.hud small{color:var(--muted)}
+.status{position:absolute;top:14px;left:14px;background:#06101dcc;border:1px solid #355078;border-radius:999px;padding:8px 12px;font-size:12px;font-weight:900}
+.stopMark{position:absolute;bottom:6%;height:63%;width:2px;background:var(--yellow)}
+.stopMark span{position:absolute;top:0;left:8px;white-space:nowrap;color:var(--yellow);font-size:12px;font-weight:900}
+.brakeGlow{position:absolute;border-radius:50%;width:24px;height:24px;background:#ff6b3d55;filter:blur(3px);opacity:0}
+#glowF{left:27.8%;bottom:22.3%} #glowR{left:63.1%;bottom:22.3%}
+.running #glowF,.running #glowR{animation:glow .5s ease-in-out infinite alternate}
+@keyframes glow{from{opacity:.3;box-shadow:0 0 8px #ff6b3d}to{opacity:1;box-shadow:0 0 28px #ff6b3d}}
+
+.energyHud{position:absolute;left:14px;bottom:18px;width:265px;background:#06101dcc;border:1px solid #355078;border-radius:12px;padding:10px}
+.energyHud small{display:block;color:var(--muted);margin-bottom:6px}
+.bar{height:10px;background:#20324e;border-radius:999px;overflow:hidden}
+.bar>div{height:100%;width:0;background:linear-gradient(90deg,var(--green),var(--cyan))}
+.energyValue{font-size:12px;margin-top:5px;color:#dce8ff}
+
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}
+.energyGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
+@media(max-width:700px){.metrics{grid-template-columns:repeat(2,1fr)}.energyGrid{grid-template-columns:1fr}}
+.metric,.energyCard{background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:12px}
+.metric .k,.energyCard .k{font-size:12px;color:var(--muted)}
+.metric .v,.energyCard .v{font-size:22px;font-weight:950;margin-top:4px}
+.energyCard .sub{font-size:12px;color:var(--muted);margin-top:5px}
+.energyCard:nth-child(1) .v{color:var(--cyan)}
+.energyCard:nth-child(2) .v{color:var(--green)}
+.energyCard:nth-child(3) .v{color:var(--yellow)}
+.u{font-size:12px;color:var(--muted)}
+
+.graph{margin-top:14px;background:#091426;border:1px solid var(--line);border-radius:16px;padding:10px}
+canvas{width:100%;height:280px;display:block}
+.legend{font-size:12px;color:var(--muted);margin:4px 0 0 8px}
+.eqs{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:14px}
+@media(max-width:700px){.eqs{grid-template-columns:1fr}}
+.eq{font-family:Cambria,Georgia,serif;background:#091426;border:1px solid var(--line);border-radius:14px;padding:12px}
+.footer{text-align:center;color:var(--muted);font-size:13px;padding:22px 0 5px}.footer strong{color:white}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div>
+    <h1>Interactive Braking Simulator</h1>
+    <p>Stopping distance, braking time, brake torque, and regenerative energy storage.</p>
+  </div>
+  <div class="badge">Zaw Htut Aung • KMUTT 6 • TAIST 2025</div>
+</header>
+
+<div class="layout">
+<aside class="card">
+  <h2>Braking Inputs</h2>
+  <div class="grid2">
+    <div><label>Vehicle mass (kg)</label><input id="mass" type="number" value="1073"></div>
+    <div><label>Initial speed (km/h)</label><input id="speed" type="number" value="200"></div>
+  </div>
+  <div class="grid2">
+    <div><label>Road friction μ</label><input id="mu" type="number" value="0.95" step="0.01"></div>
+    <div><label>Reaction time (s)</label><input id="reaction" type="number" value="0.20" step="0.05"></div>
+  </div>
+  <div class="grid2">
+    <div><label>Wheelbase (m)</label><input id="wheelbase" type="number" value="2.31" step="0.01"></div>
+    <div><label>CG height (m)</label><input id="cg" type="number" value="0.45" step="0.01"></div>
+  </div>
+  <div class="grid2">
+    <div><label>Front static load (%)</label><input id="frontPct" type="number" value="53"></div>
+    <div><label>Wheel radius (m)</label><input id="radius" type="number" value="0.308" step="0.001"></div>
+  </div>
+
+  <label>Braking system</label>
+  <select id="mode">
+    <option value="conventional">Conventional hydraulic</option>
+    <option value="regen">Regenerative + conventional</option>
+  </select>
+
+  <div class="grid2">
+    <div><label>Regen power (kW)</label><input id="regenPower" type="number" value="30"></div>
+    <div><label>Regen efficiency</label><input id="regenEff" type="number" value="0.75" step="0.05"></div>
+  </div>
+
+  <button class="run" id="run">Start Braking Simulation</button>
+  <button class="reset" id="reset">Reset</button>
+  <div class="note">The energy cards below show the initial vehicle kinetic energy, the energy actually stored in the battery, and the remaining energy handled by the friction brakes / other losses.</div>
+</aside>
+
+<main class="card">
+  <div class="sim" id="sim">
+    <div class="status" id="status">Ready</div>
+    <div class="hud"><div class="speed" id="speedNow">200.0</div><small>km/h</small></div>
+
+    <div class="car" id="car">
+      <svg viewBox="0 0 700 260">
+        <defs><linearGradient id="body" x1="0" x2="1"><stop offset="0" stop-color="#c71939"/><stop offset="1" stop-color="#ff5d73"/></linearGradient></defs>
+        <path d="M80 168 C108 140 145 118 220 109 L320 75 C356 62 415 64 455 91 L510 125 C560 130 603 142 625 165 L637 190 L603 205 L99 205 L63 190 Z" fill="url(#body)" stroke="#ff8da0" stroke-width="3"/>
+        <path d="M244 108 L321 80 C348 70 391 71 424 91 L468 123 L260 123 Z" fill="#91b9d8" opacity=".75"/>
+        <circle class="wheel" cx="180" cy="200" r="48" fill="#0c0f16" stroke="#68748d" stroke-width="8"/>
+        <circle class="wheel" cx="535" cy="200" r="48" fill="#0c0f16" stroke="#68748d" stroke-width="8"/>
+        <circle cx="180" cy="200" r="18" fill="#b7c2d8"/><circle cx="535" cy="200" r="18" fill="#b7c2d8"/>
+      </svg>
+    </div>
+
+    <div class="brakeGlow" id="glowF"></div><div class="brakeGlow" id="glowR"></div>
+    <div class="stopMark" id="stopMark"><span id="stopText">Stop</span></div>
+    <div class="road-mark"></div>
+
+    <div class="energyHud">
+      <small>Battery energy recovered</small>
+      <div class="bar"><div id="energyBar"></div></div>
+      <div class="energyValue" id="energyValue">0 kJ stored</div>
+    </div>
+  </div>
+
+  <div class="metrics">
+    <div class="metric"><div class="k">Braking time</div><div class="v" id="mTime">—</div></div>
+    <div class="metric"><div class="k">Braking distance</div><div class="v" id="mDistance">—</div></div>
+    <div class="metric"><div class="k">Total stop distance</div><div class="v" id="mTotal">—</div></div>
+    <div class="metric"><div class="k">Max brake force</div><div class="v" id="mForce">—</div></div>
+  </div>
+
+  <div class="energyGrid">
+    <div class="energyCard">
+      <div class="k">Initial kinetic energy</div>
+      <div class="v" id="eInitial">—</div>
+      <div class="sub">Vehicle energy before braking</div>
+    </div>
+    <div class="energyCard">
+      <div class="k">Energy stored in battery</div>
+      <div class="v" id="eStored">—</div>
+      <div class="sub" id="eStoredPct">—</div>
+    </div>
+    <div class="energyCard">
+      <div class="k">Friction brake / loss energy</div>
+      <div class="v" id="eFriction">—</div>
+      <div class="sub" id="eFrictionPct">—</div>
+    </div>
+  </div>
+
+  <div class="graph">
+    <canvas id="speedChart" width="950" height="280"></canvas>
+    <div class="legend">Speed vs Time only.</div>
+  </div>
+
+  <div class="eqs" id="eqs"></div>
+</main>
+</div>
+
+<div class="footer">Designed by <strong>Zaw Htut Aung</strong> • KMUTT 6 • TAIST 2025</div>
+</div>
+
+<script>
+(() => {
+  const $=id=>document.getElementById(id);
+  let raf=null;
+  const num=(id,f)=>{const x=parseFloat($(id).value);return Number.isFinite(x)?x:f};
+  const clamp=(x,a,b)=>Math.min(Math.max(x,a),b);
+  const fmt=(x,d=2)=>Number.isFinite(x)?x.toFixed(d):"—";
+
+  function calc(){
+    const m=num("mass",1073),kmh=num("speed",200),mu=num("mu",.95),tr=num("reaction",.2),
+      L=num("wheelbase",2.31),h=num("cg",.45),frontPct=num("frontPct",53)/100,
+      r=num("radius",.308),regenP=num("regenPower",30),eta=num("regenEff",.75),
+      regenOn=$("mode").value==="regen",g=9.81;
+
+    const v=kmh/3.6,F=mu*m*g,a=F/m,t=v/a,d=v*v/(2*a),dr=v*tr,total=d+dr;
+    const W=m*g,transfer=m*a*h/L,front=frontPct*W+transfer,rear=(1-frontPct)*W-transfer;
+    const frontF=mu*front,rearF=mu*rear,frontT=frontF/2*r,rearT=rearF/2*r;
+    const Ek=.5*m*v*v;
+    const EregenMech=regenOn?Math.min(regenP*1000*t,Ek):0;
+    const Estored=EregenMech*eta;
+    const Efriction=Math.max(Ek-Estored,0);
+    return {m,kmh,mu,tr,L,h,r,regenOn,regenP,eta,v,F,a,t,d,dr,total,W,transfer,front,rear,frontF,rearF,frontT,rearT,Ek,EregenMech,Estored,Efriction};
+  }
+
+  function draw(r){
+    $("mTime").innerHTML=`${fmt(r.t,2)} <span class="u">s</span>`;
+    $("mDistance").innerHTML=`${fmt(r.d,1)} <span class="u">m</span>`;
+    $("mTotal").innerHTML=`${fmt(r.total,1)} <span class="u">m</span>`;
+    $("mForce").innerHTML=`${fmt(r.F/1000,2)} <span class="u">kN</span>`;
+
+    const storedPct=r.Ek?100*r.Estored/r.Ek:0, frictionPct=r.Ek?100*r.Efriction/r.Ek:0;
+    $("eInitial").textContent=`${fmt(r.Ek/1e6,3)} MJ`;
+    $("eStored").textContent=`${fmt(r.Estored/1e6,3)} MJ`;
+    $("eStoredPct").textContent=`${fmt(storedPct,1)}% of initial kinetic energy`;
+    $("eFriction").textContent=`${fmt(r.Efriction/1e6,3)} MJ`;
+    $("eFrictionPct").textContent=`${fmt(frictionPct,1)}% as brake heat / losses`;
+
+    const fb=100*r.frontF/(r.frontF+r.rearF),rb=100-fb;
+    $("eqs").innerHTML=[
+      `F<sub>brake,max</sub> = μmg = <b>${fmt(r.F,0)} N</b>`,
+      `a = μg = <b>${fmt(r.a,2)} m/s²</b>`,
+      `t = v/a = <b>${fmt(r.t,2)} s</b>`,
+      `d = v²/(2a) = <b>${fmt(r.d,1)} m</b>`,
+      `E<sub>k</sub> = ½mv² = <b>${fmt(r.Ek/1e6,3)} MJ</b>`,
+      r.regenOn?`E<sub>regen,mech</sub> = P·t = <b>${fmt(r.EregenMech/1000,1)} kJ</b>`:`Regenerative braking = <b>OFF</b>`,
+      r.regenOn?`E<sub>stored</sub> = ηE<sub>regen</sub> = <b>${fmt(r.Estored/1000,1)} kJ</b>`:`E<sub>stored</sub> = <b>0 kJ</b>`,
+      `E<sub>friction/loss</sub> ≈ <b>${fmt(r.Efriction/1000,1)} kJ</b>`,
+      `Brake bias ≈ <b>${fmt(fb,1)}% front / ${fmt(rb,1)}% rear</b>`,
+      `Brake torque ≈ <b>${fmt(r.frontT,0)} Nm/front</b>, <b>${fmt(r.rearT,0)} Nm/rear</b>`
+    ].map(x=>`<div class="eq">${x}</div>`).join("");
+
+    drawChart(r);
+    const normalized=clamp(r.d/220,.15,.95);
+    $("stopMark").style.left=(normalized*100)+"%";
+    $("stopText").textContent=`Stop ≈ ${fmt(r.d,0)} m`;
+  }
+
+  function drawChart(r){
+    const c=$("speedChart"),ctx=c.getContext("2d"),W=c.width,H=c.height;
+    ctx.clearRect(0,0,W,H);ctx.fillStyle="#091426";ctx.fillRect(0,0,W,H);
+    ctx.strokeStyle="#203451";ctx.lineWidth=1;
+    for(let i=1;i<6;i++){const y=i*H/6;ctx.beginPath();ctx.moveTo(52,y);ctx.lineTo(W-15,y);ctx.stroke()}
+    for(let i=1;i<8;i++){const x=52+i*(W-67)/8;ctx.beginPath();ctx.moveTo(x,22);ctx.lineTo(x,H-38);ctx.stroke()}
+    ctx.fillStyle="#dce7f8";ctx.font="15px system-ui";ctx.fillText("Speed vs Time",16,20);
+    ctx.fillStyle="#93a9cb";ctx.font="12px system-ui";ctx.fillText("Time (s)",W-85,H-12);
+    ctx.save();ctx.translate(14,H/2);ctx.rotate(-Math.PI/2);ctx.fillText("Speed (km/h)",0,0);ctx.restore();
+    ctx.strokeStyle="#54d8ff";ctx.lineWidth=4;ctx.beginPath();
+    for(let i=0;i<=100;i++){const p=i/100,t=r.t*p,v=r.kmh*(1-p),x=52+(t/r.t)*(W-74),y=(H-38)-(v/r.kmh)*(H-66);i?ctx.lineTo(x,y):ctx.moveTo(x,y)}
+    ctx.stroke();
+  }
+
+  function animate(r){
+    if(raf)cancelAnimationFrame(raf);
+    $("sim").classList.add("running","braking");
+    $("status").textContent=r.regenOn?"Regenerative + hydraulic braking":"Hydraulic braking";
+    const start=performance.now(),duration=clamp(r.t*650,3000,8000);
+    function frame(now){
+      const p=clamp((now-start)/duration,0,1),tt=r.t*p,speed=r.kmh*(1-p),
+        dist=r.v*tt-.5*r.a*tt*tt,pos=8+clamp(dist/Math.max(r.d,1),0,1)*56;
+      $("speedNow").textContent=fmt(Math.max(speed,0),1);
+      $("car").style.left=pos+"%";
+      const storedNow=r.Estored*p,pct=r.Ek?100*storedNow/r.Ek:0;
+      $("energyBar").style.width=clamp(pct,0,100)+"%";
+      $("energyValue").textContent=r.regenOn?`${fmt(storedNow/1000,0)} kJ stored`:"Regeneration off";
+      if(p<1)raf=requestAnimationFrame(frame);
+      else{$("sim").classList.remove("running","braking");$("speedNow").textContent="0.0";$("status").textContent="Vehicle stopped";$("car").style.left="64%"}
+    }
+    raf=requestAnimationFrame(frame);
+  }
+
+  $("run").addEventListener("click",()=>{const r=calc();draw(r);animate(r)});
+  $("reset").addEventListener("click",()=>{if(raf)cancelAnimationFrame(raf);$("sim").classList.remove("running","braking");$("car").style.left="8%";$("status").textContent="Ready";$("speedNow").textContent=num("speed",200).toFixed(1);$("energyBar").style.width="0%";$("energyValue").textContent="0 kJ stored"});
+
+  const r=calc();draw(r);$("speedNow").textContent=fmt(r.kmh,1);
+})();
+</script>
+</body>
+</html>
